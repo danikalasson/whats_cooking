@@ -31,8 +31,8 @@ spice_counts <- training %>%
   summarise(spice_count = sum(is_spice))
 
 # 3. Has Coconut (binary)
-cajun_creole_feature <- training %>%
-  mutate(has_coconut = if_else(str_detect(str_to_lower(ingredients), "cajun_creole"), 1, 0)) %>%
+coconut_feature <- training %>%
+  mutate(has_coconut = if_else(str_detect(str_to_lower(ingredients), "coconut"), 1, 0)) %>%
   group_by(id) %>%
   summarise(has_coconut = max(has_coconut))
 
@@ -141,3 +141,79 @@ submission <- data.frame(
 )
 
 write.csv(submission, "C:/Users/lasso/OneDrive/Documents/Fall 2025/Stat 348/whats_cooking_new/submission.csv", row.names = FALSE)
+
+
+
+
+
+
+
+#######################
+##Plots for ingredients
+######################
+library(dplyr)
+library(ggplot2)
+library(stringr)
+
+ingredients_of_interest <- c("coconut", "soy sauce", "cilantro", "ginger", "garlic")
+
+ingredient_freq_df <- train_long %>%
+  mutate(ingredient = str_to_lower(ingredients)) %>%
+  filter(ingredient %in% ingredients_of_interest) %>%
+  group_by(cuisine, ingredient) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(cuisine) %>%
+  mutate(freq = count / sum(count)) %>%
+  arrange(cuisine, desc(freq))
+
+ingredient_freq_df
+
+
+
+library(dplyr)
+library(ggplot2)
+library(stringr)
+
+top5_df <- train_long %>%
+  mutate(ingredient = str_to_lower(ingredients)) %>%
+  group_by(cuisine, ingredient) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(cuisine) %>%
+  slice_max(order_by = count, n = 5) %>%
+  arrange(cuisine, desc(count))
+
+top5_df
+
+
+
+
+
+
+
+unique_ingredients <- train_long %>%
+  mutate(ingredient = str_to_lower(ingredients)) %>%
+  
+  # Count cuisines per ingredient
+  distinct(cuisine, ingredient) %>%
+  count(ingredient, name = "num_cuisines") %>% 
+  filter(num_cuisines == 1) %>%     # keep only ingredients appearing in exactly one cuisine
+  
+  # Join back to get the cuisine info
+  inner_join(
+    train_long %>%
+      mutate(ingredient = str_to_lower(ingredients)) %>%
+      distinct(cuisine, ingredient),
+    by = "ingredient"
+  ) %>%
+  
+  # Add the number of unique recipe IDs containing this ingredient
+  left_join(
+    train_long %>%
+      mutate(ingredient = str_to_lower(ingredients)) %>%
+      group_by(ingredient) %>%
+      summarise(num_recipes = n_distinct(id), .groups = "drop"),
+    by = "ingredient"
+  ) %>%
+  
+  arrange(cuisine, ingredient)
+
